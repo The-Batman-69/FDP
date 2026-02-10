@@ -4,10 +4,12 @@ const path = require('path');
 const {
   createFDP,
   listFDPs,
+  listPublicFDPs,
   getFDPById,
   updateFDP,
   registerForFDP,
   listRegistrations,
+  myRegistrations,
   reviewRegistration
 } = require('../controllers/fdp.controller');
 const { protect } = require('../middleware/auth.middleware');
@@ -21,7 +23,9 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+router.get('/public/list', listPublicFDPs);
 router.get('/', protect, listFDPs);
+router.get('/my-registrations', protect, allowRoles('participant'), myRegistrations);
 router.get('/:id', protect, getFDPById);
 router.post(
   '/',

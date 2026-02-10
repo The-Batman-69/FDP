@@ -12,7 +12,7 @@ const adminAnalytics = async (_req, res) => {
   ]);
 
   const participationTrend = await Registration.aggregate([
-    { $group: { _id: { $substr: ['$createdAt', 0, 7] }, count: { $sum: 1 } } },
+    { $group: { _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } }, count: { $sum: 1 } } },
     { $sort: { _id: 1 } },
     { $project: { month: '$_id', count: 1, _id: 0 } }
   ]);
@@ -47,7 +47,7 @@ const adminAnalytics = async (_req, res) => {
     },
     { $unwind: '$participant' },
     { $group: { _id: '$participant.department', count: { $sum: 1 } } },
-    { $project: { department: '$_id', count: 1, _id: 0 } }
+    { $project: { department: { $ifNull: ['$_id', 'Unknown'] }, count: 1, _id: 0 } }
   ]);
 
   res.json({
@@ -80,4 +80,24 @@ const facultyAnalytics = async (req, res) => {
   res.json({ assignedFDPs: fdps, attendanceStats, completionProgress });
 };
 
-module.exports = { adminAnalytics, facultyAnalytics };
+const participantAnalytics = async (req, res) => {
+  const registrations = await Registration.find({ participant: req.user._id }).populate('fdp', 'title startDate endDate');
+  const certificates = await Certificate.find({ participant: req.user._id });
+
+  const stats = {
+    totalRegistered: registrations.length,
+    approved: registrations.filter((r) => r.status === 'approved').length,
+    pending: registrations.filter((r) => r.status === 'pending').length,
+    certificates: certificates.length
+  };
+
+  const timeline = registrations.map((r) => ({
+    title: r.fdp?.title || 'FDP',
+    status: r.status,
+    createdAt: r.createdAt
+  }));
+
+  res.json({ stats, timeline });
+};
+
+module.exports = { adminAnalytics, facultyAnalytics, participantAnalytics };

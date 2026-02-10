@@ -6,9 +6,15 @@ const createFDP = async (req, res) => {
   try {
     const data = {
       ...req.body,
-      resourcePersons: req.body.resourcePersons || [],
+      resourcePersons: req.body.resourcePersons
+        ? String(req.body.resourcePersons)
+            .split(',')
+            .map((x) => x.trim())
+            .filter(Boolean)
+        : [],
       coordinators: req.body.coordinators || []
     };
+
     if (req.files?.bannerImage?.[0]) data.bannerImage = `/uploads/${req.files.bannerImage[0].filename}`;
     if (req.files?.brochure?.[0]) data.brochure = `/uploads/${req.files.brochure[0].filename}`;
 
@@ -26,6 +32,11 @@ const listFDPs = async (req, res) => {
   res.json({ fdps });
 };
 
+const listPublicFDPs = async (req, res) => {
+  const fdps = await FDP.find({ status: 'active' }).populate('coordinators', 'name department').sort({ startDate: 1 });
+  res.json({ fdps });
+};
+
 const getFDPById = async (req, res) => {
   const fdp = await FDP.findById(req.params.id).populate('coordinators', 'name email');
   if (!fdp) return res.status(404).json({ message: 'FDP not found' });
@@ -33,7 +44,15 @@ const getFDPById = async (req, res) => {
 };
 
 const updateFDP = async (req, res) => {
-  const fdp = await FDP.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  const updates = { ...req.body };
+  if (req.body.resourcePersons) {
+    updates.resourcePersons = String(req.body.resourcePersons)
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean);
+  }
+
+  const fdp = await FDP.findByIdAndUpdate(req.params.id, updates, { new: true });
   if (!fdp) return res.status(404).json({ message: 'FDP not found' });
   return res.json({ fdp });
 };
@@ -42,6 +61,9 @@ const registerForFDP = async (req, res) => {
   try {
     const fdp = await FDP.findById(req.params.id);
     if (!fdp) return res.status(404).json({ message: 'FDP not found' });
+    if (fdp.status !== 'active') {
+      return res.status(400).json({ message: 'Registration is allowed only for active FDPs' });
+    }
 
     const approvedCount = await Registration.countDocuments({ fdp: fdp._id, status: 'approved' });
     if (approvedCount >= fdp.maxParticipants) {
@@ -68,7 +90,7 @@ const registerForFDP = async (req, res) => {
 
     return res.status(201).json({ registration });
   } catch (error) {
-    if (error.code === 11000) return res.status(409).json({ message: 'Already registered' });
+    if (error.code === 11000) return res.status(409).json({ message: 'Already registered for this FDP' });
     return res.status(500).json({ message: error.message });
   }
 };
@@ -76,6 +98,13 @@ const registerForFDP = async (req, res) => {
 const listRegistrations = async (req, res) => {
   const registrations = await Registration.find({ fdp: req.params.id })
     .populate('participant', 'name email department designation')
+    .sort({ createdAt: -1 });
+  return res.json({ registrations });
+};
+
+const myRegistrations = async (req, res) => {
+  const registrations = await Registration.find({ participant: req.user._id })
+    .populate('fdp', 'title startDate endDate mode status')
     .sort({ createdAt: -1 });
   return res.json({ registrations });
 };
@@ -104,9 +133,11 @@ const reviewRegistration = async (req, res) => {
 module.exports = {
   createFDP,
   listFDPs,
+  listPublicFDPs,
   getFDPById,
   updateFDP,
   registerForFDP,
   listRegistrations,
+  myRegistrations,
   reviewRegistration
 };

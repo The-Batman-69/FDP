@@ -71,8 +71,10 @@ After running `npm run seed:admin` in backend:
 - `POST /api/auth/login`
 - `POST /api/auth/faculty`
 - `GET/PATCH /api/auth/me`
+- `GET /api/fdps/public/list`
 - `POST /api/fdps` / `GET /api/fdps` / `GET /api/fdps/:id` / `PATCH /api/fdps/:id`
 - `POST /api/fdps/:id/register`
+- `GET /api/fdps/my-registrations`
 - `GET /api/fdps/:id/registrations`
 - `PATCH /api/fdps/registrations/:registrationId`
 - `POST /api/attendance`
@@ -83,6 +85,7 @@ After running `npm run seed:admin` in backend:
 - `GET /api/certificates/:id/download`
 - `GET /api/analytics/admin`
 - `GET /api/analytics/faculty`
+- `GET /api/analytics/participant`
 
 ## Notes
 
