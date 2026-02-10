@@ -13,16 +13,22 @@ const transporter = nodemailer.createTransport({
 const sendEmail = async ({ to, subject, html, attachments = [] }) => {
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.warn('SMTP configuration missing. Skipping email send.');
-    return;
+    return { sent: false, reason: 'smtp_not_configured' };
   }
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to,
-    subject,
-    html,
-    attachments
-  });
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to,
+      subject,
+      html,
+      attachments
+    });
+    return { sent: true };
+  } catch (error) {
+    console.error('Email send failed:', error.message);
+    return { sent: false, reason: 'smtp_error', error: error.message };
+  }
 };
 
 module.exports = { sendEmail };
