@@ -51,6 +51,11 @@ const myCertificates = async (req, res) => {
 const downloadCertificate = async (req, res) => {
   const cert = await Certificate.findById(req.params.id);
   if (!cert) return res.status(404).json({ message: 'Certificate not found' });
+
+  if (req.user.role === 'participant' && String(cert.participant) !== String(req.user._id)) {
+    return res.status(403).json({ message: 'Forbidden: cannot download another participant certificate' });
+  }
+
   return res.download(cert.pdfPath);
 };
 
